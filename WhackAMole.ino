@@ -11,6 +11,12 @@ int failedLED = 3; // LED if miss mole
 // Initialize the LCD library with the numbers of the interface pins
 LiquidCrystal lcd(4, 6, 10, 11, 12, 13);
 
+// New variables for round system
+int currentRound = 1; // Start with round 1
+int maxRounds = 5; // Total number of rounds
+int roundSuccesses = 0; // Count of successful hits in the current round
+int hitsPerRound = 3; // Number of successful hits needed to advance to the next round
+
 void setup() {
   pinMode(mole1LED, OUTPUT);
   pinMode(mole2LED, OUTPUT);
@@ -25,19 +31,40 @@ void setup() {
 }
 
 void loop() {
+  // Check if all rounds are completed
+  if (currentRound > maxRounds) {
+    lcd.clear();
+    lcd.print("Game Over!");
+    lcd.setCursor(0, 1);
+    lcd.print("Well Played!");
+    delay(3000); // Display message for 3 seconds
+    return; // End the game loop
+  }
+
+  // Display the current round
+  lcd.clear();
+  lcd.print("Round: ");
+  lcd.print(currentRound);
+
+  // Choose a random mole to appear
   if (random(2) == 0) {
     moleWhack(mole1Switch, mole1LED); // Mole is at position 1
   } else {
     moleWhack(mole2Switch, mole2LED);
   }
-  delay(random(1000, 4000)); // Wait a random time before a new mole appears
+
+  // Decrease wait time between moles in each round
+  delay(random(1000 - (200 * currentRound), 4000 - (800 * currentRound)));
 }
 
 void moleWhack(int moleSwitch, int moleLED) {
   digitalWrite(moleLED, HIGH); // Turn on the mole LED
   lcd.clear(); // Clear LCD
-  lcd.print("Whack a mole"); // Display message
-  int moleWait = random(200, 700); // Random time for whack to occur
+  lcd.print("Whack a mole!"); // Display message
+
+  // Decrease the wait time in each round to make it more challenging
+  int moleWait = random(200 - (20 * currentRound), 700 - (70 * currentRound)); // Decrease time as rounds progress
+  moleWait = max(moleWait, 100); // Ensure time doesn't go below 100 milliseconds
   long startTime = millis();
 
   while (millis() - startTime < moleWait) { // Stay in loop until timer expires
@@ -48,13 +75,27 @@ void moleWhack(int moleSwitch, int moleLED) {
       lcd.print("Whack!"); // Display message
       delay(500);
       digitalWrite(successLED, LOW); // Blink off
+
+      roundSuccesses++; // Increment successful hits
+      // Check if enough hits are made to advance to the next round
+      if (roundSuccesses >= hitsPerRound) {
+        currentRound++; // Move to the next round
+        roundSuccesses = 0; // Reset successes for the new round
+        lcd.clear();
+        lcd.print("Round ");
+        lcd.print(currentRound);
+        lcd.print(" Start!");
+        delay(1000); // Pause before starting the next round
+      }
+
       return; // Terminate the function
     }
   }
+
   digitalWrite(moleLED, LOW); // Turn off mole light for next mole
-  digitalWrite(failedLED, HIGH);
+  digitalWrite(failedLED, HIGH); // Indicate a missed mole
   lcd.clear(); // Clear LCD
   lcd.print("Missed!"); // Display missed message
   delay(500);
-  digitalWrite(failedLED, LOW);
+  digitalWrite(failedLED, LOW); // Turn off failed LED
 }
